@@ -1,15 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:rive/rive.dart';
+import 'package:rive/rive.dart';
+import '../../domain/models/avatar_config.dart';
 import '../providers/avatar_state.dart';
 import '../theme/app_theme.dart';
 
-class CustomizationScreen extends ConsumerWidget {
-  const CustomizationScreen({Key? key}) : super(key: key);
+class CustomizationScreen extends ConsumerStatefulWidget {
+  const CustomizationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CustomizationScreen> createState() =>
+      _CustomizationScreenState();
+}
+
+class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
+  File? _riveFile;
+  RiveWidgetController? _controller;
+  NumberInput? _hairInput;
+  NumberInput? _beardInput;
+  NumberInput? _clothesInput;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRiveFile();
+  }
+
+  Future<void> _loadRiveFile() async {
+    _riveFile = await File.asset(
+      'assets/rive/potato_character.riv',
+      riveFactory: Factory.rive,
+    );
+    _controller = RiveWidgetController(_riveFile!);
+    _hairInput = _controller?.stateMachine.number('Hair');
+    _beardInput = _controller?.stateMachine.number('Beard');
+    _clothesInput = _controller?.stateMachine.number('Clothes');
+    _updateRiveInputs();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _updateRiveInputs() {
+    final avatarState = ref.read(avatarStateProvider);
+    avatarState.whenData((config) {
+      if (_hairInput != null) {
+        _hairInput!.value = _mapStringToDouble(config.hair, [
+          'none',
+          'spiky',
+          'curly',
+          'long',
+        ]);
+      }
+      if (_beardInput != null) {
+        _beardInput!.value = _mapStringToDouble(config.beard, [
+          'none',
+          'goatee',
+          'full',
+          'mustache',
+        ]);
+      }
+      if (_clothesInput != null) {
+        _clothesInput!.value = _mapStringToDouble(config.clothes, [
+          'basic_shirt',
+          'hoodie',
+          'suit',
+          'jacket',
+        ]);
+      }
+    });
+  }
+
+  double _mapStringToDouble(String value, List<String> options) {
+    final index = options.indexOf(value);
+    return index >= 0 ? index.toDouble() : 0.0;
+  }
+
+  @override
+  void dispose() {
+    _hairInput?.dispose();
+    _beardInput?.dispose();
+    _clothesInput?.dispose();
+    _controller?.dispose();
+    _riveFile?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final avatarState = ref.watch(avatarStateProvider);
+
+    // Listen to changes to update Rive inputs
+    ref.listen<AsyncValue<AvatarConfig>>(avatarStateProvider, (previous, next) {
+      next.whenData((_) {
+        _updateRiveInputs();
+      });
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -40,20 +126,40 @@ class CustomizationScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      // child: const RiveAnimation.asset(
-                      //   'assets/animations/avatar.riv',
-                      //   // This is where you would hook up StateMachineControllers to update the Rive inputs
-                      //   // using the config.toMap()
-                      // ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.face, size: 80, color: AppTheme.primaryColor),
-                          const SizedBox(height: 10),
-                          Text('Hair: ${config.hair}'),
-                          Text('Beard: ${config.beard}'),
-                          Text('Clothes: ${config.clothes}'),
-                        ],
+                      child: ClipOval(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            _riveFile == null
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.face,
+                                        size: 80,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      const Text(
+                                        'Awaiting Rive Asset',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondaryColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : RiveWidget(
+                                    controller: _controller!,
+                                    fit: Fit.cover,
+                                  ),
+                            // Optional overlay to show config strictly for testing if river asset fails
+                            // Positioned(
+                            //   bottom: 10,
+                            //   child: Text('Hair: ${config.hair} | Beard: ${config.beard}', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            // ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -66,7 +172,9 @@ class CustomizationScreen extends ConsumerWidget {
                 child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,32 +183,36 @@ class CustomizationScreen extends ConsumerWidget {
                         padding: EdgeInsets.all(20.0),
                         child: Text(
                           'Customize',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimaryColor,
+                          ),
                         ),
                       ),
                       _buildCategory(
-                        context,
-                        ref,
                         'Hair',
                         config.hair,
                         ['none', 'spiky', 'curly', 'long'],
-                        (val) => ref.read(avatarStateProvider.notifier).updateConfig(hair: val),
+                        (val) => ref
+                            .read(avatarStateProvider.notifier)
+                            .updateConfig(hair: val),
                       ),
                       _buildCategory(
-                        context,
-                        ref,
                         'Beard',
                         config.beard,
                         ['none', 'goatee', 'full', 'mustache'],
-                        (val) => ref.read(avatarStateProvider.notifier).updateConfig(beard: val),
+                        (val) => ref
+                            .read(avatarStateProvider.notifier)
+                            .updateConfig(beard: val),
                       ),
                       _buildCategory(
-                        context,
-                        ref,
                         'Clothes',
                         config.clothes,
                         ['basic_shirt', 'hoodie', 'suit', 'jacket'],
-                        (val) => ref.read(avatarStateProvider.notifier).updateConfig(clothes: val),
+                        (val) => ref
+                            .read(avatarStateProvider.notifier)
+                            .updateConfig(clothes: val),
                       ),
                     ],
                   ),
@@ -116,8 +228,6 @@ class CustomizationScreen extends ConsumerWidget {
   }
 
   Widget _buildCategory(
-    BuildContext context,
-    WidgetRef ref,
     String title,
     String currentValue,
     List<String> options,
@@ -130,7 +240,10 @@ class CustomizationScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           child: Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textSecondaryColor),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondaryColor,
+            ),
           ),
         ),
         SizedBox(
@@ -149,20 +262,29 @@ class CustomizationScreen extends ConsumerWidget {
                   width: 80,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.shade100,
+                    color: isSelected
+                        ? AppTheme.primaryColor.withOpacity(0.15)
+                        : Colors.grey.shade100,
                     border: Border.all(
-                      color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                      color: isSelected
+                          ? AppTheme.primaryColor
+                          : Colors.transparent,
                       width: 2,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Center(
                     child: Text(
-                      option,
+                      option.replaceAll('_', '\n'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: isSelected ? AppTheme.primaryColor : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : AppTheme.textPrimaryColor,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontSize: 13,
                       ),
                     ),
                   ),

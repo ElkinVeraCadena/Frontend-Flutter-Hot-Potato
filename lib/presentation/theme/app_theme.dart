@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFFFF5722); // Vibrant Orange
-  static const Color secondaryColor = Color(0xFF4CAF50); // Vibrant Green
+  static const Color primaryColor = Color(0xFFFFB28B); // Soft Peach/Coral
+  static const Color secondaryColor = Color(0xFFAED581); // Soft Light Green
   static const Color backgroundColor = Color(
-    0xFFFFF8E1,
-  ); // Soft Warm Background
+    0xFFFFFDF7,
+  ); // Very Soft Cream Background
   static const Color surfaceColor = Colors.white;
-  static const Color textPrimaryColor = Color(0xFF212121);
-  static const Color textSecondaryColor = Color(0xFF757575);
-  static const Color errorColor = Color(0xFFD32F2F);
+  static const Color textPrimaryColor = Color(0xFF4A4A4A); // Softer Dark Gray
+  static const Color textSecondaryColor = Color(0xFF8D8D8D); // Softer Medium Gray
+  static const Color errorColor = Color(0xFFE57373); // Softer Red
 
   static ThemeData get playfulTheme {
     return ThemeData(

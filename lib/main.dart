@@ -1,28 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:app_links/app_links.dart';
 
 import 'presentation/theme/app_theme.dart';
 import 'presentation/screens/feed_screen.dart';
-import 'presentation/screens/match_screen.dart';
 import 'presentation/screens/customization_screen.dart';
 import 'presentation/screens/profile_screen.dart';
 import 'presentation/screens/login_screen.dart';
+import 'presentation/screens/match_screen.dart';
 import 'presentation/providers/auth_state.dart';
+import 'package:rive/rive.dart' as rive;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await rive.RiveNative.init();
 
   await Supabase.initialize(
     url: 'https://jyvcvvuwvwtpkyfxokxo.supabase.co',
     anonKey: 'sb_publishable_cAd9XUyMBecXzq0b6IZUcA_EpZhQ07J',
   );
 
+  // Handle deep links for OAuth callbacks (e.g. Google Sign-In on Android/iOS)
+  final appLinks = AppLinks();
+
+  // Handle the initial link if the app was launched via a deep link
+  final initialUri = await appLinks.getInitialLink();
+  if (initialUri != null) {
+    await Supabase.instance.client.auth.getSessionFromUrl(initialUri);
+  }
+
+  // Listen to subsequent links while the app is running
+  appLinks.uriLinkStream.listen((uri) {
+    Supabase.instance.client.auth.getSessionFromUrl(uri);
+  });
+
   runApp(const ProviderScope(child: PatataCalienteApp()));
 }
 
 class PatataCalienteApp extends ConsumerWidget {
-  const PatataCalienteApp({Key? key}) : super(key: key);
+  const PatataCalienteApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,7 +66,7 @@ class PatataCalienteApp extends ConsumerWidget {
 }
 
 class MainNavigationWrapper extends StatefulWidget {
-  const MainNavigationWrapper({Key? key}) : super(key: key);
+  const MainNavigationWrapper({super.key});
 
   @override
   State<MainNavigationWrapper> createState() => _MainNavigationWrapperState();
@@ -60,7 +77,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   final List<Widget> _screens = [
     const FeedScreen(),
-    const MatchScreen(matchId: '123_demo_match'), // Pass placeholder config
+    const MatchScreen(), // Removed matchId parameter as it's not supported by MatchScreen
     const CustomizationScreen(),
     const ProfileScreen(),
   ];

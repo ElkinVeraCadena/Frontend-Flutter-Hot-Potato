@@ -1,4 +1,3 @@
-import 'dart:html' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user.dart';
@@ -67,7 +66,7 @@ class SupabaseRepository {
     
     String? redirectTo;
     if (kIsWeb) {
-      redirectTo = html.window.location.origin;
+      redirectTo = Uri.base.origin;
     } else {
       // Para móvil (Android/iOS), definimos un Deep Link Scheme personalizado
       // que tu aplicación interceptará para volver a abrirse.

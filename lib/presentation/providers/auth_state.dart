@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/user.dart';
 import '../../domain/repositories/supabase_repository.dart';
 
@@ -12,9 +14,23 @@ final authStateProvider =
 
 class AuthNotifier extends StateNotifier<AsyncValue<AppUser?>> {
   final SupabaseRepository _repository;
+  StreamSubscription<AuthState>? _authSubscription;
 
   AuthNotifier(this._repository) : super(const AsyncValue.loading()) {
-    checkAuth();
+    // Listen to Supabase auth state changes — this fires when:
+    // - App starts (restores session)
+    // - User logs in via email or Google OAuth deep link callback
+    // - User logs out
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) => checkAuth(),
+      onError: (e, st) => state = AsyncValue.error(e, st),
+    );
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> checkAuth() async {
